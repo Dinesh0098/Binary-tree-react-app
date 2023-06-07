@@ -15,7 +15,13 @@ function App() {
 
     setInputBoxValue(value);
 
-    setTreeValues(value.split(","));
+    const treeArray = value
+      .trim()
+      .split(",")
+      .filter((i) => i);
+    console.log("aa", treeArray);
+
+    setTreeValues(treeArray);
   }
 
   return (

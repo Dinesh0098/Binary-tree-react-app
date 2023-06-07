@@ -1,5 +1,13 @@
 import { useEffect } from "react";
 import { BinarySearchTree, Node } from "../../utils/tree";
+import {
+  fillColor,
+  nodeDistance,
+  nodeRadius,
+  selectedFillColor,
+  strokeColor,
+  textDistance,
+} from "./constants";
 
 interface IBinaryTreeCanvasProps {
   treeNodes: string[];
@@ -28,20 +36,53 @@ export default function BinaryTreeCanvas(props: IBinaryTreeCanvasProps) {
     const clickX = event.pageX - left;
     const clickY = event.pageY - top;
 
-    const r = 15;
-
     if (Elements.length) {
       for (let index = Elements.length - 1; index >= 0; index--) {
         const { cx, cy, node } = Elements[index];
         var dx = cx - clickX;
         var dy = cy - clickY;
 
-        if (dx * dx + dy * dy <= r * r) {
+        if (dx * dx + dy * dy <= nodeRadius * nodeRadius) {
           return node;
         }
       }
     }
     return false;
+  }
+
+  function drawNode(centerX: number, centerY: number, isSelected: boolean) {
+    const { context } = getCanvasAndContext();
+
+    context.beginPath();
+    context.arc(centerX, centerY, nodeRadius, 0, 2 * Math.PI);
+    context.fillStyle = isSelected ? selectedFillColor : fillColor;
+    context.fill();
+    context.lineWidth = 1;
+    context.strokeStyle = strokeColor;
+    context.stroke();
+  }
+
+  function addText(centerX: number, centerY: number, value: string) {
+    const { context } = getCanvasAndContext();
+
+    context.beginPath();
+    context.fillStyle = strokeColor;
+    context.font = "1200px";
+    context.fillText(
+      value,
+      centerX - textDistance - value.length,
+      centerY + textDistance
+    );
+    context.fill();
+  }
+
+  function drawEdge(centerY: number, lineToX: number, moveToX: number) {
+    const { context } = getCanvasAndContext();
+
+    context.beginPath();
+    context.moveTo(moveToX, centerY);
+    context.lineTo(lineToX, centerY + nodeDistance);
+    context.stroke();
   }
 
   function draw(
@@ -52,45 +93,29 @@ export default function BinaryTreeCanvas(props: IBinaryTreeCanvasProps) {
   ) {
     if (node) {
       const { value, left, right, isSelected } = node;
-      const { canvas, context } = getCanvasAndContext();
+      const { canvas } = getCanvasAndContext();
 
       const center = posX ? posX : canvas.width / 2;
       const centerX = center;
-      const radius = 15;
+
       const centerY = posY ? posY : 20;
 
-      // Draw circle
-      context.beginPath();
-      context.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-      context.fillStyle = isSelected ? "#17AABF" : "white";
-      context.fill();
-      context.lineWidth = 1;
-      context.strokeStyle = "black";
-      context.stroke();
+      drawNode(centerX, centerY, isSelected);
 
-      //Fill number in it
-      context.beginPath();
-      context.fillStyle = "black";
-      context.font = "bold 24pt ";
-      context.fillText(value, centerX - 4, centerY + 4);
-      context.fill();
+      addText(centerX, centerY, value);
 
       Elements.push({ cx: centerX, cy: centerY, node });
 
-      const some = 50 * depth;
+      const edgeDirection = nodeDistance * depth;
       if (left) {
-        context.beginPath();
-        context.moveTo(centerX - 15, centerY);
-        context.lineTo(centerX - some, centerY + 50);
-        context.stroke();
-        draw(left, centerX - some, centerY + 50, depth / 2);
+        drawEdge(centerY, centerX - edgeDirection, centerX - nodeRadius);
+
+        draw(left, centerX - edgeDirection, centerY + nodeDistance, depth / 2);
       }
       if (right) {
-        context.beginPath(); // Start a new path
-        context.moveTo(centerX + 15, centerY); // Move the pen to (30, 50)
-        context.lineTo(centerX + some, centerY + 50); // Draw a line to (150, 100)
-        context.stroke();
-        draw(right, centerX + some, centerY + 50, depth / 2);
+        drawEdge(centerY, centerX + edgeDirection, centerX + nodeRadius);
+
+        draw(right, centerX + edgeDirection, centerY + nodeDistance, depth / 2);
       }
     }
   }
@@ -99,7 +124,7 @@ export default function BinaryTreeCanvas(props: IBinaryTreeCanvasProps) {
     const { canvas, context } = getCanvasAndContext();
     BST.createCompleteBinaryTreeFromArray(treeNodes);
 
-    if (BST.root?.value) {
+    if (BST.root?.value && treeNodes.length) {
       BST.maxDepth(BST.root);
 
       Elements = [];
@@ -134,22 +159,20 @@ export default function BinaryTreeCanvas(props: IBinaryTreeCanvasProps) {
   }
 
   useEffect(() => {
-    const canvas: HTMLElement | null = document.getElementById("canvas");
+    const { canvas } = getCanvasAndContext();
 
-    canvas?.addEventListener("mousedown", mouseDown);
+    canvas.width = document.body.clientWidth - 20;
+    canvas.height = 450;
+
+    canvas.addEventListener("mousedown", mouseDown);
     return () => {
-      canvas?.removeEventListener("mousedown", mouseDown);
+      canvas.removeEventListener("mousedown", mouseDown);
     };
   }, []);
 
   return (
-    <div id="canvas-container" style={{ marginTop: "8px", width: "100%" }}>
-      <canvas
-        id="canvas"
-        style={{ border: "1px solid black" }}
-        width="1000"
-        height="400"
-      ></canvas>
+    <div id="canvas-container" style={{ marginTop: "8px" }}>
+      <canvas id="canvas" style={{ border: "1px solid black" }}></canvas>
     </div>
   );
 }
