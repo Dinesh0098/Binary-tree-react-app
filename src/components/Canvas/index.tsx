@@ -1,145 +1,152 @@
-//@ts-nocheck
-
-import { useEffect, useState } from "react";
-import { createCompleteBinaryTreeFromArray, INode } from "../../utils/tree";
+import { useEffect } from "react";
+import { BinarySearchTree, Node } from "../../utils/tree";
 
 interface IBinaryTreeCanvasProps {
   treeNodes: string[];
 }
 
-let Elements = [];
+type ElementType = { cx: number; cy: number; node: Node };
+
+let Elements: Array<ElementType> = [];
+const BST = new BinarySearchTree();
 
 export default function BinaryTreeCanvas(props: IBinaryTreeCanvasProps) {
   const { treeNodes } = props;
 
-  function getActiveObject(event) {
-    var canvas = document.getElementById("lower-canvas");
+  function getCanvasAndContext() {
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+    const context = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-    var offsetX = canvas.getBoundingClientRect().left;
-    var offsetY = canvas.getBoundingClientRect().top;
+    return { canvas, context };
+  }
 
-    const clickX = event.pageX - offsetX;
-    const clickY = event.pageY - offsetY;
+  function getActiveObject(event: MouseEvent) {
+    const { canvas } = getCanvasAndContext();
+
+    const { left, top } = canvas.getBoundingClientRect();
+
+    const clickX = event.pageX - left;
+    const clickY = event.pageY - top;
 
     const r = 15;
 
     if (Elements.length) {
       for (let index = Elements.length - 1; index >= 0; index--) {
-        const { cx, cy } = Elements[index];
+        const { cx, cy, node } = Elements[index];
         var dx = cx - clickX;
         var dy = cy - clickY;
 
-        console.log(
-          "AAA",
-          Math.sqrt(dx * dx + dy * dy) <= r * r,
-          r * r,
-          Math.sqrt(dx * dx + dy * dy)
-        );
         if (dx * dx + dy * dy <= r * r) {
-          alert("you are inside the circle");
+          return node;
         }
-        // if (
-        //   pointX >= elements[index].top &&
-        //   pointY >= elements[index].left &&
-        //   pointX <= elements[index].width + elements[index].top &&
-        //   pointY <= elements[index].height + elements[index].left
-        // ) {
-        //   elements[index].isSelected = true;
-        //   console.log("aaaaaaaa", elements[index]);
-        //   //   activeObject = Object.assign({}, elements[index]);
-        //   return true;
-        // }
       }
     }
     return false;
   }
 
   function draw(
-    node: INode,
+    node: Node | null,
     posX: number | null,
     posY: number | null,
     depth = 1
   ) {
-    const { value, left, right } = node;
-    const canvas = document.getElementById("lower-canvas");
-    const context = canvas.getContext("2d");
+    if (node) {
+      const { value, left, right, isSelected } = node;
+      const { canvas, context } = getCanvasAndContext();
 
-    const center = posX ? posX : canvas.width / 2;
-    const centerX = center;
-    const radius = 15;
-    const centerY = posY ? posY : 20;
+      const center = posX ? posX : canvas.width / 2;
+      const centerX = center;
+      const radius = 15;
+      const centerY = posY ? posY : 20;
 
-    // Draw circle
-    context.beginPath();
-    context.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-    context.fillStyle = "white";
-    context.fill();
-    context.lineWidth = 1;
-    context.strokeStyle = "black";
-    context.stroke();
-
-    //Fill number in it
-    context.beginPath();
-    context.fillStyle = "black";
-    context.font = "bold 24px ";
-    context.fillText(value, centerX - 4, centerY + 4);
-    context.fill();
-
-    Elements.push({ cx: centerX, cy: centerY, node });
-
-    const some = 50 * depth;
-    if (left) {
+      // Draw circle
       context.beginPath();
-      context.moveTo(centerX - 15, centerY);
-      context.lineTo(centerX - some, centerY + 50);
+      context.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      context.fillStyle = isSelected ? "#17AABF" : "white";
+      context.fill();
+      context.lineWidth = 1;
+      context.strokeStyle = "black";
       context.stroke();
-      draw(left, centerX - some, centerY + 50, depth / 2);
-    }
-    if (right) {
-      context.beginPath(); // Start a new path
-      context.moveTo(centerX + 15, centerY); // Move the pen to (30, 50)
-      context.lineTo(centerX + some, centerY + 50); // Draw a line to (150, 100)
-      context.stroke();
-      draw(right, centerX + some, centerY + 50, depth / 2);
+
+      //Fill number in it
+      context.beginPath();
+      context.fillStyle = "black";
+      context.font = "bold 24pt ";
+      context.fillText(value, centerX - 4, centerY + 4);
+      context.fill();
+
+      Elements.push({ cx: centerX, cy: centerY, node });
+
+      const some = 50 * depth;
+      if (left) {
+        context.beginPath();
+        context.moveTo(centerX - 15, centerY);
+        context.lineTo(centerX - some, centerY + 50);
+        context.stroke();
+        draw(left, centerX - some, centerY + 50, depth / 2);
+      }
+      if (right) {
+        context.beginPath(); // Start a new path
+        context.moveTo(centerX + 15, centerY); // Move the pen to (30, 50)
+        context.lineTo(centerX + some, centerY + 50); // Draw a line to (150, 100)
+        context.stroke();
+        draw(right, centerX + some, centerY + 50, depth / 2);
+      }
     }
   }
 
   useEffect(() => {
-    const canvas = document.getElementById("lower-canvas");
-    const context = canvas.getContext("2d");
-    const result = createCompleteBinaryTreeFromArray(treeNodes);
+    const { canvas, context } = getCanvasAndContext();
+    BST.createCompleteBinaryTreeFromArray(treeNodes);
 
-    if (result.root?.value) {
-      const depth = result.maxDepth(result.root);
+    if (BST.root?.value) {
+      BST.maxDepth(BST.root);
+
       Elements = [];
       context.clearRect(0, 0, canvas.width, canvas.height);
-      draw(result.root, null, null, depth);
+      draw(BST.root, null, null, BST.depth);
     } else {
       Elements = [];
       context.clearRect(0, 0, canvas.width, canvas.height);
     }
   }, [treeNodes]);
 
-  function mouseDown(event) {
-    const canvas = document.getElementById("lower-canvas");
-    const ctx = canvas.getContext("2d");
+  function mouseDown(event: MouseEvent) {
+    const { canvas, context } = getCanvasAndContext();
 
-    if (ctx.isPointInPath(circle, event.clientX, event.clientY)) {
-      alert("you are inside the circle");
+    const activeObj = getActiveObject(event);
+
+    if (activeObj) {
+      if (BST.root) {
+        BST.clearPreviousSelection(BST.root);
+      }
+      BST.activateParents(activeObj);
+      setTimeout(() => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        draw(BST.root, null, null, BST.depth);
+      }, 0);
+    } else {
+      if (BST.root) {
+        BST.clearPreviousSelection(BST.root);
+      }
     }
   }
 
   useEffect(() => {
-    const canvas = document.getElementById("lower-canvas");
+    const canvas: HTMLElement | null = document.getElementById("canvas");
 
-    canvas.addEventListener("mousedown", mouseDown);
+    canvas?.addEventListener("mousedown", mouseDown);
+    return () => {
+      canvas?.removeEventListener("mousedown", mouseDown);
+    };
   }, []);
 
   return (
     <div id="canvas-container" style={{ marginTop: "8px", width: "100%" }}>
       <canvas
-        id="lower-canvas"
-        style={{ border: "1px solid black", width: "98%" }}
+        id="canvas"
+        style={{ border: "1px solid black" }}
         width="1000"
         height="400"
       ></canvas>
